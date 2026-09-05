@@ -1,0 +1,37 @@
+# IDE и файлы ОС
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+.DS_Store
+Thumbs.db
+
+# Backend 
+/backend/vendor/
+/backend/.env
+/backend/.env.*
+!/backend/.env.example
+/backend/bootstrap/cache/*.php
+/backend/storage/*.key
+
+# Frontend 
+/frontend/node_modules/
+/frontend/dist/
+/frontend/build/
+/frontend/.env.local
+/frontend/.env.*.local
+
+# Python / NLP (на будущее)
+__pycache__/
+*.py[cod]
+/nlp/venv/
+/nlp/.env
+
+# Логи и временные файлы
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
