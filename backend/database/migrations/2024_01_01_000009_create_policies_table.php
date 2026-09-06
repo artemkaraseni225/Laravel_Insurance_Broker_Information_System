@@ -13,7 +13,6 @@ return new class extends Migration
             $table->foreignId('application_id')->unique()->constrained('applications')->restrictOnDelete();
             $table->string('policy_number', 100)->unique();
             $table->string('status', 50)->default('pending_payment');
-            // start_date/end_date nullable: проставляются при активации полиса (после оплаты)
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
             $table->decimal('premium', 12, 2);
