@@ -1,0 +1,1 @@
+"умные" компоненты целых страниц (например, Dashboard.jsx, PolicyList.jsx, Login.jsx). Они будут обращаться к api/ и передавать данные в components/
