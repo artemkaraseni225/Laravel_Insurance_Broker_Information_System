@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             InsuranceTypeSeeder::class,
             TariffSeeder::class,
+            AdminUserSeeder::class
         ]);
     }
 }
