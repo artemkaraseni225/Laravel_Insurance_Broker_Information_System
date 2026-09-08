@@ -19,6 +19,14 @@ class RegisterRequest extends FormRequest
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role' => ['required', Rule::in(['customer', 'broker'])],
+
+            // только для cutomer
+            'phone' => ['required_if:role,customer', 'nullable', 'string', 'max:30'],
+            'address' => ['required_if:role,customer', 'nullable', 'string', 'max:500'],
+            'date_of_birth' => ['required_if:role,customer', 'nullable', 'date'],
+
+            // Необязательно для broker по умолчанию 0, назначается позже админом
+            'commission_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ];
     }
 }

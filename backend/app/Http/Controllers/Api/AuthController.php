@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Models\Broker;
+use App\Models\Customer;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -18,19 +21,39 @@ class AuthController extends Controller
     {
         $data = $request->validated();
 
-        $role = Role::where('name', $data['role'])->firstOrFail();
+        // DB::transaction: если создание customers/brokers упадёт,
+        // откатится и созданный users — не останется "голого" юзера без профиля
+        $user = DB::transaction(function () use ($data) {
+            $role = Role::where('name', $data['role'])->firstOrFail();
 
-        $user = User::create([
-            'role_id' => $role->id,
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => Hash::make($data['password']),
-        ]);
+            $user = User::create([
+                'role_id' => $role->id,
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+            ]);
+
+            if ($role->name === 'customer') {
+                Customer::create([
+                    'user_id' => $user->id,
+                    'phone' => $data['phone'],
+                    'address' => $data['address'],
+                    'date_of_birth' => $data['date_of_birth'],
+                ]);
+            } elseif ($role->name === 'broker') {
+                Broker::create([
+                    'user_id' => $user->id,
+                    'commission_rate' => $data['commission_rate'] ?? 0,
+                ]);
+            }
+
+            return $user;
+        });
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'user' => $user->load('role'),
+            'user' => $user->load(['role', 'customer', 'broker']),
             'token' => $token,
         ], 201);
     }
@@ -49,7 +72,7 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'user' => $user->load('role'),
+            'user' => $user->load(['role', 'customer', 'broker']),
             'token' => $token,
         ]);
     }
@@ -64,7 +87,7 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         return response()->json([
-            'user' => $request->user()->load('role'),
+            'user' => $request->user()->load(['role', 'customer', 'broker']),
         ]);
     }
 }
