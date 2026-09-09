@@ -158,6 +158,7 @@ function Calculator() {
                   <SelectContent>
                     {selectedType.tariffs.map((tariff) => (
                       <SelectItem key={tariff.id} value={String(tariff.id)}>
+                        {tariff.company ? `${tariff.company.name} — ` : ''}
                         {tariff.name} — от {tariff.base_price} / год
                       </SelectItem>
                     ))}

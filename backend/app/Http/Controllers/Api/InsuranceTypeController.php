@@ -12,7 +12,7 @@ class InsuranceTypeController extends Controller
     {
         $insuranceTypes = InsuranceType::query()
             ->where('status', 'active')
-            ->with(['tariffs' => fn ($query) => $query->where('status', 'active')])
+            ->with(['tariffs' => fn ($query) => $query->where('status', 'active')->with('company')])
             ->get();
 
         return InsuranceTypeResource::collection($insuranceTypes);

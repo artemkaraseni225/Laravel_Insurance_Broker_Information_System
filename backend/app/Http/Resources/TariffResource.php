@@ -14,6 +14,11 @@ class TariffResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'base_price' => $this->base_price,
+            'company' => $this->whenLoaded('company', fn () => [
+                'id' => $this->company->id,
+                'name' => $this->company->name,
+                'logo_path' => $this->company->logo_path,
+            ]),
         ];
     }
 }
