@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +23,6 @@ import {
 
 // Захардкоженные опции формы на тип страхования — соответствуют
 // тому, что реально понимает CalculatorService на бэке (неделя 4).
-// Никакой динамики из БД, как и решили раньше.
 const TYPE_FIELDS = {
   auto: {
     options: [
@@ -60,7 +60,15 @@ function Calculator() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Список типов + тарифов грузим один раз при заходе на страницу
+  // Состояние подачи заявки — отдельно от расчёта цены
+  const [files, setFiles] = useState([]);
+  const [application, setApplication] = useState(null);
+  const [applicationError, setApplicationError] = useState(null);
+  const [submittingApplication, setSubmittingApplication] = useState(false);
+  const [uploadingDocuments, setUploadingDocuments] = useState(false);
+  const [uploadedCount, setUploadedCount] = useState(0);
+  const [uploadErrors, setUploadErrors] = useState([]);
+
   useEffect(() => {
     api
       .get('/insurance-types')
@@ -72,23 +80,36 @@ function Calculator() {
   const selectedType = insuranceTypes.find((t) => t.code === typeCode);
   const fieldsConfig = TYPE_FIELDS[typeCode];
 
+  function resetApplicationState() {
+    setApplication(null);
+    setApplicationError(null);
+    setFiles([]);
+    setUploadedCount(0);
+  }
+
+  function handleFilesSelected(e) {
+    const newFiles = Array.from(e.target.files);
+    setFiles((prev) => [...prev, ...newFiles]);
+    e.target.value = ''; // сбрасываем инпут, чтобы можно было выбрать те же файлы ещё раз при необходимости
+  }
+
+  function removeFile(index) {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  }
+
   function handleTypeChange(code) {
     setTypeCode(code);
     setTariffId('');
     setOptions({});
     setResult(null);
+    resetApplicationState();
   }
 
   function toggleOption(key, checked) {
     setOptions((prev) => ({ ...prev, [key]: checked }));
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setError(null);
-    setResult(null);
-    setSubmitting(true);
-
+  function buildPayload() {
     const selectedOptions = Object.entries(options)
       .filter(([, checked]) => checked)
       .map(([key]) => key);
@@ -108,8 +129,18 @@ function Calculator() {
       payload.property_value = Number(propertyValue);
     }
 
+    return payload;
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError(null);
+    setResult(null);
+    resetApplicationState();
+    setSubmitting(true);
+
     try {
-      const { data } = await api.post('/calculator/quote', payload);
+      const { data } = await api.post('/calculator/quote', buildPayload());
       setResult(data);
     } catch (err) {
       if (err.response?.status === 422) {
@@ -120,6 +151,55 @@ function Calculator() {
       }
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleSubmitApplication() {
+    setApplicationError(null);
+    setSubmittingApplication(true);
+
+    try {
+      const { data } = await api.post('/applications', buildPayload());
+      setApplication(data.application);
+
+      if (files.length > 0) {
+        setUploadingDocuments(true);
+        let uploaded = 0;
+        const failedFiles = [];
+
+        for (const file of files) {
+          const formData = new FormData();
+          formData.append('document', file);
+
+          try {
+            await api.post(`/applications/${data.application.id}/documents`, formData);
+            uploaded += 1;
+          } catch (uploadErr) {
+            const reason =
+              Object.values(uploadErr.response?.data?.errors ?? {}).flat()[0] ||
+              uploadErr.response?.data?.message ||
+              `ошибка ${uploadErr.response?.status ?? 'сети'}`;
+            failedFiles.push(`${file.name}: ${reason}`);
+          }
+        }
+
+        setUploadedCount(uploaded);
+        setUploadErrors(failedFiles);
+        setUploadingDocuments(false);
+      }
+    } catch (err) {
+      if (err.response?.status === 401) {
+        setApplicationError('unauthenticated');
+      } else if (err.response?.status === 403) {
+        setApplicationError('Заявки может подавать только клиент.');
+      } else if (err.response?.status === 422) {
+        const messages = Object.values(err.response.data.errors ?? {}).flat();
+        setApplicationError(messages[0] ?? 'Проверьте данные заявки');
+      } else {
+        setApplicationError('Не удалось подать заявку');
+      }
+    } finally {
+      setSubmittingApplication(false);
     }
   }
 
@@ -232,6 +312,82 @@ function Calculator() {
               <div className="rounded-md border bg-muted p-4 text-center">
                 <p className="text-sm text-muted-foreground">Итоговая стоимость</p>
                 <p className="text-2xl font-bold">{result.calculated_price}</p>
+              </div>
+            )}
+
+            {result && (
+              <div className="space-y-3 border-t pt-4">
+                {!application && (
+                  <div className="space-y-2">
+                    <Label htmlFor="documents">Прикрепить документы (необязательно)</Label>
+                    <Input
+                      id="documents"
+                      type="file"
+                      multiple
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={handleFilesSelected}
+                    />
+                    {files.length > 0 && (
+                      <ul className="space-y-1 text-sm text-muted-foreground">
+                        {files.map((file, index) => (
+                          <li key={`${file.name}-${index}`} className="flex items-center justify-between gap-2">
+                            <span className="truncate">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeFile(index)}
+                              className="text-destructive underline"
+                            >
+                              убрать
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+
+                {applicationError === 'unauthenticated' ? (
+                  <p className="text-sm text-destructive">
+                    Войдите в аккаунт, чтобы подать заявку —{' '}
+                    <Link to="/login" className="underline">
+                      вход
+                    </Link>{' '}
+                    /{' '}
+                    <Link to="/register" className="underline">
+                      регистрация
+                    </Link>
+                    .
+                  </p>
+                ) : (
+                  applicationError && <p className="text-sm text-destructive">{applicationError}</p>
+                )}
+
+                {application ? (
+                  <div className="space-y-1">
+                    <p className="text-sm text-green-600">
+                      Заявка №{application.id} создана, статус: {application.status}.
+                      {uploadingDocuments && ' Загружаем документы...'}
+                      {!uploadingDocuments && files.length > 0 && ` Загружено документов: ${uploadedCount} из ${files.length}.`}
+                    </p>
+                    {uploadErrors.length > 0 && (
+                      <ul className="text-sm text-destructive">
+                        {uploadErrors.map((msg) => (
+                          <li key={msg}>{msg}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full"
+                    onClick={handleSubmitApplication}
+                    disabled={submittingApplication}
+                  >
+                    {submittingApplication ? 'Отправка заявки...' : 'Подать заявку'}
+                  </Button>
+                )}
               </div>
             )}
           </CardContent>
