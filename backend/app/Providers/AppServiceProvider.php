@@ -22,8 +22,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('is-broker', fn ($user) => $user->role?->name === 'broker');
         Gate::define('is-customer', fn ($user) => $user->role?->name === 'customer');
 
-        // Policy — привязана к конкретной записи ("это ИМЕННО ТВОЙ профиль,
-        // а не чужой"). Когда появятся Application/Document — добавим
+        // Policy — привязана к конкретной записи. Когда появятся Application/Document — добавим
         // ApplicationPolicy/DocumentPolicy по тому же принципу.
         Gate::policy(User::class, UserPolicy::class);
     }

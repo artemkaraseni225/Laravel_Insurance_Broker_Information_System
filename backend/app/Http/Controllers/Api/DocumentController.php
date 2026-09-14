@@ -1,0 +1,39 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\DocumentUploadRequest;
+use App\Models\Application;
+use App\Models\Document;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Gate;
+
+class DocumentController extends Controller
+{
+    public function store(
+        DocumentUploadRequest $request,
+        Application $application
+    ): JsonResponse {
+        Gate::authorize('uploadDocument', $application);
+
+        $file = $request->file('document');
+
+        $path = $file->store(
+            "applications/{$application->id}/documents"
+        );
+
+        $document = Document::create([
+            'application_id' => $application->id,
+            'uploaded_by' => $request->user()->id,
+            'file_path' => $path,
+            'file_name' => $file->getClientOriginalName(),
+            'type' => $file->getMimeType(),
+        ]);
+
+        return response()->json([
+            'message' => 'Документ успешно загружен',
+            'document' => $document,
+        ], 201);
+    }
+}

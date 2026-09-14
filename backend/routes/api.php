@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CalculatorController;
@@ -21,7 +22,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/applications', [ApplicationController::class, 'store']);
 
+    Route::post(
+    '/applications/{application}/documents',
+    [DocumentController::class, 'store']
+    );
+
     Route::middleware('role:admin')->get('/admin/ping', function () {
         return response()->json(['message' => 'ok, ты администратор']);
     });
+
+    
 });

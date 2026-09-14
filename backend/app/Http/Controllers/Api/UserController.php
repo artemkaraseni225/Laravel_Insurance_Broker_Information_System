@@ -11,8 +11,6 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        // Бросит AuthorizationException -> Laravel сам вернёт 403,
-        // если проверка не прошла (обрабатывать вручную не нужно)
         Gate::authorize('viewAny', User::class);
 
         return response()->json([
