@@ -22,6 +22,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/applications', [ApplicationController::class, 'store']);
 
+    Route::get('/applications', [ApplicationController::class, 'index']);
+
     Route::post(
     '/applications/{application}/documents',
     [DocumentController::class, 'store']

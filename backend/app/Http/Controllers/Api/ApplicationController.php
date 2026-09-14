@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use App\Enums\ApplicationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Application\CreateApplicationRequest;
@@ -15,7 +17,22 @@ class ApplicationController extends Controller
 {
     public function __construct(private CalculatorService $calculatorService)
     {
+
     }
+
+    public function index(Request $request): JsonResponse
+{
+    $customer = $request->user()->customer;
+
+    $applications = $customer->applications()
+        ->with(['insuranceType', 'tariff'])
+        ->latest()
+        ->get();
+
+    return response()->json([
+        'applications' => $applications,
+    ]);
+}
 
     public function store(CreateApplicationRequest $request)
     {
