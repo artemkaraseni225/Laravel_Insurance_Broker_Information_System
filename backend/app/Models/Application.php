@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ApplicationStatus;
 use Illuminate\Database\Eloquent\Model;
 
 class Application extends Model
@@ -20,6 +21,7 @@ class Application extends Model
     {
         return [
             'insurance_data' => 'array',
+            'status' => ApplicationStatus::class,
         ];
     }
 
