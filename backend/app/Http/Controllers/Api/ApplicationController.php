@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use app\Http\Resources\ApplicationResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Enums\ApplicationStatus;
@@ -21,22 +22,33 @@ class ApplicationController extends Controller
     }
 
     public function index(Request $request): JsonResponse
-{
-    $customer = $request->user()->customer;
+    {
+        $customer = $request->user()->customer;
 
-    $applications = $customer->applications()
-        ->with(['insuranceType', 'tariff'])
-        ->latest()
-        ->get();
+        $applications = $customer->applications()
+            ->with(['insuranceType', 'tariff'])
+            ->latest()
+            ->get();
 
-    return response()->json([
-        'applications' => $applications,
-    ]);
-}
+        return response()->json([
+            'applications' => $applications,
+        ]);
+    }
+
+    public function show(Request $request, Application $application)
+    {
+        Gate::authorize('view', $application);
+
+        $application->load(['insuranceType', 'tariff.company', 'documents', 'statusHistories']);
+
+        return response()->json([
+            'application' => new ApplicationResource($application),
+        ]);
+    }
 
     public function store(CreateApplicationRequest $request)
     {
-        // Заявки подаёт только клиент — у брокера/админа нет профиля customer
+        // Заявки подаёт только клиент
         Gate::authorize('is-customer');
 
         $customer = $request->user()->customer;
@@ -64,6 +76,13 @@ class ApplicationController extends Controller
             'status' => ApplicationStatus::New,
             'calculated_price' => $price,
             'insurance_data' => $insuranceData,
+        ]);
+
+        $application->statusHistories()->create([
+            'from_status' => null,
+            'to_status' => ApplicationStatus::New->value,
+            'changed_by' => $request->user()->id,
+            'note' => 'Заявка подана клиентом',
         ]);
 
         return response()->json([

@@ -54,4 +54,9 @@ class Application extends Model
     {
         return $this->hasOne(Policy::class);
     }
+
+    public function statusHistories()
+    {
+        return $this->hasMany(ApplicationStatusHistory::class)->orderBy('created_at');
+    }
 }

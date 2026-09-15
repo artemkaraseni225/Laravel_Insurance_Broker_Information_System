@@ -21,8 +21,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/users/{user}', [UserController::class, 'show']);
 
     Route::post('/applications', [ApplicationController::class, 'store']);
-
     Route::get('/applications', [ApplicationController::class, 'index']);
+    Route::get('/applications/{application}', [ApplicationController::class, 'show']);
 
     Route::post(
     '/applications/{application}/documents',

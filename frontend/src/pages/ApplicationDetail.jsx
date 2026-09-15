@@ -1,0 +1,168 @@
+import { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import api from '../services/api';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+
+const STATUS_LABELS = {
+  new: 'Новая',
+  in_review: 'На рассмотрении',
+  approved: 'Одобрена',
+  rejected: 'Отклонена',
+};
+
+const FIELD_LABELS = {
+  age: 'Возраст',
+  property_value: 'Стоимость имущества',
+  term_months: 'Срок (мес.)',
+};
+
+const OPTION_LABELS = {
+  no_accident_history: 'Без аварий в истории',
+  additional_driver: 'Доп. водитель',
+  roadside_assistance: 'Помощь на дороге',
+  security_system_discount: 'Охранная сигнализация',
+  full_coverage: 'Расширенное покрытие',
+  dental_addon: 'Стоматология',
+  sports_addon: 'Экстремальные виды спорта',
+};
+
+function ApplicationDetail() {
+  const { id } = useParams();
+  const [application, setApplication] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    api
+      .get(`/applications/${id}`)
+      .then(({ data }) => setApplication(data.application))
+      .catch((err) => {
+        if (err.response?.status === 403) {
+          setError('Эта заявка вам не принадлежит');
+        } else if (err.response?.status === 404) {
+          setError('Заявка не найдена');
+        } else {
+          setError('Не удалось загрузить заявку');
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) {
+    return <p className="p-6 text-center text-muted-foreground">Загрузка...</p>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-destructive">{error}</p>
+        <Link to="/my-applications" className="text-sm underline">
+          ← Назад к списку
+        </Link>
+      </div>
+    );
+  }
+
+  if (!application) {
+    return null;
+  }
+
+  const data = application.insurance_data ?? {};
+  const paramEntries = Object.entries(data).filter(([key]) => key !== 'options');
+  const selectedOptions = data.options ?? [];
+
+  return (
+    <div className="mx-auto max-w-2xl space-y-4 p-6">
+      <Link to="/my-applications" className="text-sm underline">
+        ← Назад к списку
+      </Link>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Заявка №{application.id}</CardTitle>
+          <CardDescription>
+            {application.insurance_type?.name}
+            {application.tariff?.company ? ` — ${application.tariff.company.name}` : ''}
+            {application.tariff ? ` — ${application.tariff.name}` : ''}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Статус</span>
+            <span className="font-medium">
+              {STATUS_LABELS[application.status] ?? application.status}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Стоимость</span>
+            <span className="font-medium">{application.calculated_price}</span>
+          </div>
+
+          <div>
+            <h3 className="mb-2 font-medium">Параметры расчёта</h3>
+            <dl className="space-y-1 text-sm">
+              {paramEntries.map(([key, value]) => (
+                <div key={key} className="flex justify-between">
+                  <dt className="text-muted-foreground">{FIELD_LABELS[key] ?? key}</dt>
+                  <dd>{String(value)}</dd>
+                </div>
+              ))}
+              {selectedOptions.length > 0 && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Доп. опции</dt>
+                  <dd className="text-right">
+                    {selectedOptions.map((opt) => OPTION_LABELS[opt] ?? opt).join(', ')}
+                  </dd>
+                </div>
+              )}
+            </dl>
+          </div>
+
+          <div>
+            <h3 className="mb-2 font-medium">Документы</h3>
+            {application.documents?.length > 0 ? (
+              <ul className="space-y-1 text-sm">
+                {application.documents.map((doc) => (
+                  <li key={doc.id} className="flex justify-between">
+                    <span>{doc.file_name}</span>
+                    <span className="text-muted-foreground">
+                      {new Date(doc.created_at).toLocaleDateString('ru-RU')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">Документов нет.</p>
+            )}
+          </div>
+
+          <div>
+            <h3 className="mb-2 font-medium">История изменений</h3>
+            {application.status_history?.length > 0 ? (
+              <ul className="space-y-2 text-sm">
+                {application.status_history.map((entry) => (
+                  <li key={entry.id} className="border-l-2 pl-3">
+                    <div>
+                      {entry.from_status
+                        ? `${STATUS_LABELS[entry.from_status] ?? entry.from_status} → `
+                        : ''}
+                      {STATUS_LABELS[entry.to_status] ?? entry.to_status}
+                    </div>
+                    {entry.note && <div className="text-muted-foreground">{entry.note}</div>}
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(entry.created_at).toLocaleString('ru-RU')}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">Пока нет изменений.</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export default ApplicationDetail;
