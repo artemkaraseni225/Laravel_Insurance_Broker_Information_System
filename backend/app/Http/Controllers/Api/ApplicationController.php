@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
-use app\Http\Resources\ApplicationResource;
+use App\Http\Resources\ApplicationResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Enums\ApplicationStatus;

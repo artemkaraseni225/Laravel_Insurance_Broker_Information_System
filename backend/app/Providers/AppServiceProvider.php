@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\Application;
 use App\Models\User;
+use App\Policies\ApplicationPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -25,5 +27,6 @@ class AppServiceProvider extends ServiceProvider
         // Policy — привязана к конкретной записи. Когда появятся Application/Document — добавим
         // ApplicationPolicy/DocumentPolicy по тому же принципу.
         Gate::policy(User::class, UserPolicy::class);
+        Gate::policy(Application::class, ApplicationPolicy::class);
     }
 }
